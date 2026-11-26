@@ -43,4 +43,14 @@ def grade_at(windows, line, minute):
     return match_shift(windows, line, minute)
 
 
+def grade_candidates_at(windows, line, minute):
+    """列出时点上的全部排产候选，供重叠纸种分别评分。"""
+    from .algorithm import candidate_windows
+
+    return candidate_windows(windows, line, minute)
+
+
+candidates_at = grade_candidates_at
+
+
 from .grade_timeline import audit_grade_timeline

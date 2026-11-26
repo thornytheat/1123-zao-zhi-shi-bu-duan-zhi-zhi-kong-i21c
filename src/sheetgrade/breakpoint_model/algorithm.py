@@ -97,3 +97,18 @@ def calculate(records, *, history, cutoff, minimum_leaf=5, depth=3):
                                       'training_count': root.support, 'branch': decisions, 'fit_id': fingerprint,
                                       'reason': 'ESTIMATED' if allowed else 'OUTSIDE_TRAINING_PROFILE'})
     return results
+
+
+from .grade_risk import (  # noqa: E402
+    assess_grade_risks,
+    assess_reel_grade_risk,
+    combine_candidate_risks,
+    reaches_warning_line,
+)
+
+
+def __getattr__(name):
+    if "risk" in name.lower() or "candidate" in name.lower():
+        from . import grade_risk
+        return getattr(grade_risk, name)
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

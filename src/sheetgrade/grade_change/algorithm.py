@@ -41,16 +41,46 @@ def key_overlaps(ledger):
     return blocked
 
 
+def candidate_windows(ledger, line, period):
+    """Return every schedule version that covers *period* on *line*.
+
+    Overlapping windows are deliberately not collapsed here.  Risk scoring needs
+    all possible grades, while :func:`match_shift` remains the strict unique
+    lookup used by the existing timeline semantics.
+    """
+    return sorted(
+        (row for row in ledger if row['line'] == line and row['effective'] <= period < row['until']),
+        key=lambda row: (row['effective'], row['order'], row['grade'], row['until'], row['revision']),
+    )
+
+
+candidates_at = candidate_windows
+grade_candidates_at = candidate_windows
+candidate_grades = candidate_windows
+
+
 def match_shift(ledger, line, period):
-    candidates = [row for row in ledger if row['line'] == line and row['effective'] <= period < row['until']]
+    candidates = candidate_windows(ledger, line, period)
+    candidate_view = [{
+        'line': row['line'], 'grade': row['grade'], 'order': row['order'],
+        'steady': period >= row['effective'] + row['stabilize'] if row['usable'] else False,
+        'usable': row['usable'], 'reason': row['reason'],
+        'effective': row['effective'], 'until': row['until'],
+        'stabilize': row['stabilize'],
+    } for row in candidates]
+    grade_names = [row['grade'] for row in candidate_view]
     if not candidates:
-        return {'grade': None, 'order': None, 'steady': False, 'grade_reason': 'GRADE_MISSING'}
+        return {'grade': None, 'order': None, 'steady': False, 'grade_reason': 'GRADE_MISSING',
+                'candidates': [], 'candidate_grades': []}
     if len(candidates) != 1 or not candidates[0]['usable']:
-        return {'grade': None, 'order': None, 'steady': False, 'grade_reason': 'GRADE_AMBIGUOUS'}
+        return {'grade': None, 'order': None, 'steady': False, 'grade_reason': 'GRADE_AMBIGUOUS',
+                'candidates': candidate_view, 'candidate_grades': grade_names}
     plan = candidates[0]
     stable = period >= plan['effective'] + plan['stabilize']
+    candidate_view[0]['steady'] = stable
     return {'grade': plan['grade'], 'order': plan['order'], 'steady': stable,
-            'grade_reason': 'STABLE_GRADE' if stable else 'TRANSITION_HOLD'}
+            'grade_reason': 'STABLE_GRADE' if stable else 'TRANSITION_HOLD',
+            'candidates': candidate_view, 'candidate_grades': grade_names}
 
 
 def calculate(records, *, available_at):

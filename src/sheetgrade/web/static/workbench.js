@@ -116,6 +116,33 @@ function renderEvidence() {
     byId('evidence-heading').textContent = selected.title;
     byId('evidence-summary').textContent = selected.summary;
     renderTable(byId('stage-records'), selected.records || [], selected.columns);
+    if (selected.grade_risks?.length) {
+        const heading = named('h3', '换线候选纸种风险');
+        const risks = selected.grade_risks.map((risk) => ({
+            reel: risk.reel,
+            line: risk.line,
+            period: risk.period,
+            grades: risk.candidates.map((candidate) => candidate.grade).join('、'),
+            candidate_scores: risk.candidates.map((candidate) => {
+                const score = candidate.probability === null || candidate.probability === undefined
+                    ? '不评分'
+                    : formatter.format(candidate.probability);
+                return `${candidate.grade} ${score}（${candidate.reason}）`;
+            }),
+            probability: risk.probability,
+            warning_line: risk.threshold ?? selected.grade_risk_threshold,
+            high_risk: risk.high_risk,
+            decision: risk.state,
+            reason: risk.reason,
+        }));
+        const wrap = named('div', undefined, 'grade-risk-evidence');
+        renderTable(wrap, risks, {
+            reel: '纸卷', line: '机台', period: '分钟', grades: '候选纸种',
+            candidate_scores: '各候选评分', probability: '整卷风险',
+            warning_line: '警戒线', high_risk: '高风险', decision: '处置', reason: '依据',
+        });
+        byId('stage-records').append(heading, wrap);
+    }
     if (selected.errors?.length) {
         const issues = named('details');
         issues.append(named('summary', `隔离 ${selected.errors.length} 条记录`));

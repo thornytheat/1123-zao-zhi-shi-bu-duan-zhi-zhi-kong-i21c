@@ -3,6 +3,7 @@ from __future__ import annotations
 from .contracts import WetSignal
 
 from collections import defaultdict
+from collections.abc import Mapping
 from dataclasses import asdict
 from math import fsum, sqrt
 
@@ -20,8 +21,11 @@ def stable_scale(values, minimum):
 
 
 def train_references(history, cutoff, minimum):
+    from .contracts import parse
+
+    rows = [parse(row) if isinstance(row, Mapping) else row for row in history]
     candidates = defaultdict(list)
-    for row in sorted(history, key=lambda item: (item.grade, item.line, item.period, item.reel)):
+    for row in sorted(rows, key=lambda item: (item.grade, item.line, item.period, item.reel)):
         if row.steady and not row.spliced and row.period < cutoff:
             candidates[row.grade].append(row)
     return {
@@ -29,6 +33,12 @@ def train_references(history, cutoff, minimum):
                 for material, least in [('consistency', .01), ('vacuum_kpa', .5), ('speed', 8)]]
         for grade, group in candidates.items() if len(group) >= minimum
     }
+
+
+# Descriptive aliases for candidate-grade risk orchestration.
+grade_baselines = train_references
+build_grade_baselines = train_references
+reference_baselines = train_references
 
 
 def process_signals(records, references, max_previous_gap):
